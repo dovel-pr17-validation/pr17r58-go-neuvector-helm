@@ -1,0 +1,38 @@
+name: Publish Charts on tagging
+on:
+  push:
+    tags: 'v*'
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Setup helm
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: gh-pages
+          path: gh-pages
+          persist-credentials: true
+      - name: Publish Helm charts
+        run: |
+          CHARTS_TMP_DIR=$(mktemp -d)
+          helm lint charts/core charts/crd charts/monitor
+          helm package charts/core charts/crd charts/monitor --destination ${CHARTS_TMP_DIR} --version ${TAG#v}
+          cd gh-pages/
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor }}@users.noreply.github.com"
+          if [[ -f "index.yaml" ]]; then
+            FLAGS="--merge index.yaml"
+          fi
+          helm repo index ${CHARTS_TMP_DIR} --url https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }} ${FLAGS}
+          mv -f ${CHARTS_TMP_DIR}/*.tgz ./
+          mv -f ${CHARTS_TMP_DIR}/index.yaml ./index.yaml
+
+          git add .
+          git commit -m "Publish ${{ github.ref_name }}"
+          git push origin gh-pages

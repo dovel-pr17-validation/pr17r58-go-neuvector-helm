@@ -1,0 +1,26 @@
+name: Update helm charts
+on:
+  workflow_dispatch:
+jobs:
+  update-helm-charts:
+    name: Update neuvector charts
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # for updatecli to update the repository
+      pull-requests: write # for updatecli to create a PR
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Updatecli in the runner
+        uses: updatecli/updatecli-action@41b9c8d707830a9daebaeaa84c1b62d60b779564 # v3.6.0
+      - name: Update neuvector charts
+        env:
+          UPDATECLI_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UPDATECLI_GITHUB_OWNER: ${{ github.repository_owner }}
+          UPDATECLI_GITHUB_BRANCH: ${{ github.ref_name }}
+          UPDATECLI_UDASH_API_URL: ${{ secrets.UPDATECLI_UDASH_API_URL }}
+          UPDATECLI_UDASH_ACCESS_TOKEN: ${{ secrets.UPDATECLI_UDASH_ACCESS_TOKEN }}
+          UPDATECLI_UDASH_URL: ${{ secrets.UPDATECLI_UDASH_URL }}
+        run: "updatecli compose apply --file updatecli/updatecli-compose.release.yaml --experimental"
